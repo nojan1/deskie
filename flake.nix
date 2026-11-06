@@ -20,7 +20,7 @@
           pname = "deskui";
           version = "0.1.0";
           src = ./app;
-          vendorHash = "sha256-t/mPauAt/jmiK3thoSclM+5GNEVvQcQ/JWfWIWL40Rg=";
+          vendorHash = "sha256-w2mJK/q2GbVC8KSrN4LxjK0rskW/yLlW7kSobAQdpqY=";
         };
       };
 
