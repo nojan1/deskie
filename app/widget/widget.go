@@ -13,6 +13,8 @@ package widget
 
 import (
 	"image"
+	"image/color"
+	"math"
 	"time"
 )
 
@@ -141,4 +143,31 @@ func Walk(w Widget, fn func(Widget)) {
 			Walk(ch, fn)
 		}
 	}
+}
+
+// Occluder is implemented by widgets that paint some area fully opaque.
+// Screen.Render uses it to skip painting layers hidden underneath (e.g. the
+// home screen behind a modal window) — a large saving on slow hardware.
+type Occluder interface {
+	// OpaqueRect returns a rectangle (screen coordinates) that the widget
+	// covers entirely with opaque pixels; empty if none.
+	OpaqueRect() image.Rectangle
+}
+
+// opaqueRect is the fully covered part of a (rounded) rect filled with col:
+// rounded corners only cut into the top and bottom radius rows.
+func opaqueRect(b image.Rectangle, radius float64, col color.Color) image.Rectangle {
+	if col == nil {
+		return image.Rectangle{}
+	}
+	if _, _, _, a := col.RGBA(); a != 0xffff {
+		return image.Rectangle{}
+	}
+	in := int(math.Ceil(radius))
+	b.Min.Y += in
+	b.Max.Y -= in
+	if b.Empty() {
+		return image.Rectangle{}
+	}
+	return b
 }

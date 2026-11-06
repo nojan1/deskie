@@ -73,3 +73,7 @@ func (w *Window) Draw(c *Canvas) {
 func (w *Window) HandleEvent(e Event) bool {
 	return w.dispatch(e) || e.Kind == Down
 }
+
+func (w *Window) OpaqueRect() image.Rectangle {
+	return opaqueRect(w.bounds, w.th.Radius, w.th.Surface)
+}

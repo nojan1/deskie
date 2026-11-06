@@ -200,3 +200,5 @@ func (s *Stack) HandleEvent(e Event) bool { return s.dispatch(e) }
 type Spacer struct{ Base }
 
 func NewSpacer() *Spacer { return &Spacer{} }
+
+func (s *Stack) OpaqueRect() image.Rectangle { return opaqueRect(s.bounds, s.Radius, s.Background) }

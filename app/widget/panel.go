@@ -69,3 +69,5 @@ func (p *Panel) HandleEvent(e Event) bool {
 	}
 	return e.Kind == Down && p.Background != nil
 }
+
+func (p *Panel) OpaqueRect() image.Rectangle { return opaqueRect(p.bounds, p.Radius, p.Background) }

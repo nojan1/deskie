@@ -41,6 +41,7 @@ type Screen struct {
 	dirty    image.Rectangle
 	captured *Layer
 	touch    *image.Point
+	pool     scratchPool
 }
 
 func NewScreen(w, h int, th *Theme) *Screen {
@@ -190,10 +191,25 @@ func (s *Screen) Render(img *image.RGBA) (r image.Rectangle, ok bool) {
 	if r.Empty() {
 		return r, false
 	}
-	c := newCanvas(img, r)
-	c.FillRect(s.rect, s.Theme.Background)
-	for _, l := range s.layers {
-		if l.opts.Dim {
+	c := newCanvas(&s.pool, r)
+	// Start at the topmost layer whose root opaquely covers the whole dirty
+	// region: everything below it (and its own backdrop) would be overdrawn.
+	start := -1
+	for i := len(s.layers) - 1; i >= 0; i-- {
+		root := s.layers[i].root
+		if o, ok := root.(Occluder); ok && root.Visible() && r.In(o.OpaqueRect()) {
+			start = i
+			break
+		}
+	}
+	occluded := start >= 0
+	if !occluded {
+		c.FillRect(s.rect, s.Theme.Background)
+		start = 0
+	}
+	for i, l := range s.layers[start:] {
+		// The occluding layer's own backdrop lies entirely under it.
+		if l.opts.Dim && !(occluded && i == 0) {
 			c.FillRect(s.rect, s.Theme.Backdrop)
 		}
 		if l.root.Visible() && c.Visible(l.root.Bounds()) {
@@ -205,5 +221,6 @@ func (s *Screen) Render(img *image.RGBA) (r image.Rectangle, ok bool) {
 		c.DrawCircle(float64(s.touch.X), float64(s.touch.Y), 8)
 		c.Fill()
 	}
+	c.flush(img)
 	return r, true
 }

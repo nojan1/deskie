@@ -73,6 +73,9 @@ func (l *List) layout() {
 		y += h
 		total += h
 	}
+	if total != l.content {
+		l.Invalidate() // the scroll indicator's size/position depends on it
+	}
 	l.content = total
 	if o := min(l.offset, l.maxOffset()); o != l.offset {
 		l.offset = o
@@ -94,6 +97,9 @@ func (l *List) ScrollTo(off int) {
 }
 
 func (l *List) Offset() int { return l.offset }
+
+// MaxOffset is the largest scroll offset (0 when everything fits).
+func (l *List) MaxOffset() int { return l.maxOffset() }
 
 func (l *List) PreferredSize() image.Point {
 	w := 0
