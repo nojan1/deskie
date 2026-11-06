@@ -42,7 +42,7 @@ func main() {
 	flag.BoolVar(&t.debug, "touch-debug", false, "print raw touch values to stderr (fb backend)")
 	calibrate := flag.Bool("calibrate", false, "run touch calibration and print a -touch-cal flag")
 	showDirty := flag.Bool("show-dirty", false, "kitty backend: outline the last flushed rect in red")
-	showTouches := flag.Bool("show-touches", true, "draw a dot where the screen is touched")
+	showTouches := flag.Bool("show-touches", false, "draw a dot where the screen is touched (debugging)")
 	configPath := flag.String("config", "", "JSON config file (Home Assistant, calendars); see config.go")
 	flag.Parse()
 

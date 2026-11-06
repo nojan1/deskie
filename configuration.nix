@@ -43,9 +43,13 @@ in
 
   hardware.enableRedistributableFirmware = true; # Pi 3 wifi/bt firmware
 
-  # Wifi (fill in, or use ethernet)
+  # Wifi. The passphrase is not in the repo or the Nix store: it is read at
+  # runtime from a file on the device, owned root:wpa_supplicant, mode 640:
+  #   /var/lib/secrets/wireless.env:  psk_nojcrib=<passphrase>
+  # On a freshly flashed card, create it (or use ethernet) before wifi works.
   networking.wireless.enable = true;
-  networking.wireless.networks."nojcrib".psk = "REMOVED-see-wireless.env";
+  networking.wireless.secretsFile = "/var/lib/secrets/wireless.env";
+  networking.wireless.networks."nojcrib".pskRaw = "ext:psk_nojcrib";
 
   services.openssh.enable = true;
   users.users.root.openssh.authorizedKeys.keys = [
