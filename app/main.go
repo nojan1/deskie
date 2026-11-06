@@ -38,7 +38,9 @@ func main() {
 	flag.IntVar(&t.maxX, "touch-maxx", 4095, "raw X at screen right")
 	flag.IntVar(&t.minY, "touch-miny", 0, "raw Y at screen top")
 	flag.IntVar(&t.maxY, "touch-maxy", 4095, "raw Y at screen bottom")
+	flag.StringVar(&t.cal, "touch-cal", "", "affine touch calibration a,b,c,d,e,f from -calibrate (overrides swap/inv/min/max)")
 	flag.BoolVar(&t.debug, "touch-debug", false, "print raw touch values to stderr (fb backend)")
+	calibrate := flag.Bool("calibrate", false, "run touch calibration and print a -touch-cal flag")
 	showDirty := flag.Bool("show-dirty", false, "kitty backend: outline the last flushed rect in red")
 	showTouches := flag.Bool("show-touches", true, "draw a dot where the screen is touched")
 	configPath := flag.String("config", "", "JSON config file (Home Assistant, calendars); see config.go")
@@ -50,12 +52,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	t.raw = *calibrate
 	d, err := openDisplay(*backend, t, *showDirty)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "display:", err)
 		os.Exit(1)
 	}
 	defer d.Close()
+
+	if *calibrate {
+		if err := runCalibration(d); err != nil {
+			d.Close()
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 
 	w, h := d.Size()
 	img := image.NewRGBA(image.Rect(0, 0, w, h))

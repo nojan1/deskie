@@ -26,6 +26,14 @@ let
       refresh_minutes = 10;
     };
   });
+
+  # Touch calibration for the ADS7846 with the panel at rotate=90: an affine
+  # raw->pixel map (x = a*rx + b*ry + c, y = d*rx + e*ry + f) fitted from five
+  # on-screen targets. Max error at the targets: 4 px corners, 8 px centre.
+  # To redo it (e.g. after changing the rotation), on the Pi:
+  #   systemctl stop deskui; deskui -backend fb -calibrate; systemctl start deskui
+  # and paste the printed value here.
+  deskuiTouch = "-touch-cal=-0.00035163,-0.129781,513.937,-0.084262,-0.00103614,331.202";
 in
 {
   networking.hostName = "deskie";
@@ -44,7 +52,7 @@ in
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII01sWlLj7/5LCdK59vI8w9cgPsI3+IsEWS0doAVV2vX"
   ];
 
-  environment.systemPackages = with pkgs; [ btop evtest libinput usbutils ];
+  environment.systemPackages = with pkgs; [ btop evtest libinput usbutils deskui ];
 
   # Service user: needs /dev/fbN (video) and /dev/input/event* (input)
   users.users.deskui = {
@@ -61,7 +69,7 @@ in
     serviceConfig = {
       # Explicit fb backend: "auto" falls back to the terminal backend when the
       # panel isn't up yet at boot, which can't work under systemd.
-      ExecStart = "${pkgs.deskui}/bin/deskui -backend fb -config ${deskuiConfig}";
+      ExecStart = "${pkgs.deskui}/bin/deskui -backend fb -config ${deskuiConfig} ${deskuiTouch}";
       EnvironmentFile = "-/var/lib/deskui/secrets.env"; # optional, see above
       User = "deskui";
       Restart = "on-failure";
