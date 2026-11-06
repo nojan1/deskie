@@ -7,7 +7,7 @@ import (
 	"golang.org/x/image/font/opentype"
 )
 
-// Static (non-variable) Fira Code files, see fonts/README.txt for where to get them.
+// Static (non-variable) Fira Code TTFs from https://github.com/tonsky/FiraCode (OFL).
 // Fira Code is monospaced; no OpenType shaping is done, so its ligatures
 // (->, ==, !=) render as separate glyphs, which is fine for a display.
 
