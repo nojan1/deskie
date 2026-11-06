@@ -105,11 +105,19 @@ func main() {
 func openDisplay(backend string, t touchOpts, showDirty bool) (Display, error) {
 	switch backend {
 	case "fb":
-		d, err := openFB(t)
-		if err != nil {
-			return nil, err
+		// At boot the panel's driver may not have probed yet: wait for it
+		// rather than exiting into systemd's restart rate limit.
+		deadline := time.Now().Add(30 * time.Second)
+		for {
+			d, err := openFB(t)
+			if err == nil {
+				return d, nil
+			}
+			if time.Now().After(deadline) {
+				return nil, err
+			}
+			time.Sleep(time.Second)
 		}
-		return d, nil
 	case "kitty":
 		d, err := openKitty(480, 320, showDirty)
 		if err != nil {

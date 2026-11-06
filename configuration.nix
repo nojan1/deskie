@@ -8,7 +8,7 @@ let
   # A missing secret just disables that source.
   deskuiConfig = pkgs.writeText "deskui.json" (builtins.toJSON {
     home_assistant = {
-      url = "http://homeassistant.local:8123";
+      url = "http://192.168.1.15:8123";
       token = "$DESKUI_HA_TOKEN";
       # Home screen toggles; empty shows local demo toggles.
       buttons = [
@@ -29,6 +29,7 @@ let
 in
 {
   networking.hostName = "deskie";
+  time.timeZone = "Europe/Stockholm";
   system.stateVersion = "26.04";
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
@@ -58,7 +59,9 @@ in
     after = [ "systemd-modules-load.service" "network-online.target" ];
     wants = [ "network-online.target" ];
     serviceConfig = {
-      ExecStart = "${pkgs.deskui}/bin/deskui -config ${deskuiConfig}";
+      # Explicit fb backend: "auto" falls back to the terminal backend when the
+      # panel isn't up yet at boot, which can't work under systemd.
+      ExecStart = "${pkgs.deskui}/bin/deskui -backend fb -config ${deskuiConfig}";
       EnvironmentFile = "-/var/lib/deskui/secrets.env"; # optional, see above
       User = "deskui";
       Restart = "on-failure";
