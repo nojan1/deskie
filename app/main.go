@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"image"
@@ -40,7 +41,14 @@ func main() {
 	flag.BoolVar(&t.debug, "touch-debug", false, "print raw touch values to stderr (fb backend)")
 	showDirty := flag.Bool("show-dirty", false, "kitty backend: outline the last flushed rect in red")
 	showTouches := flag.Bool("show-touches", true, "draw a dot where the screen is touched")
+	configPath := flag.String("config", "", "JSON config file (Home Assistant, calendars); see config.go")
 	flag.Parse()
+
+	cfg, err := loadConfig(*configPath)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "config:", err)
+		os.Exit(1)
+	}
 
 	d, err := openDisplay(*backend, t, *showDirty)
 	if err != nil {
@@ -53,7 +61,18 @@ func main() {
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
 	screen := widget.NewScreen(w, h, newTheme())
 	screen.ShowTouches = *showTouches
-	buildUI(screen)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// Sources run on their own goroutines; they hand UI changes to this loop.
+	updates := make(chan func(), 256)
+	post := func(fn func()) {
+		select {
+		case updates <- fn:
+		case <-ctx.Done():
+		}
+	}
+	a := newApp(ctx, screen, cfg, post)
+	a.startSources()
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
@@ -67,6 +86,8 @@ func main() {
 				return
 			}
 			screen.Handle(toWidgetEvent(e))
+		case fn := <-updates:
+			fn()
 		case now := <-tick.C:
 			screen.Tick(now)
 			if r, ok := screen.Render(img); ok {

@@ -1,4 +1,32 @@
 { pkgs, ... }:
+let
+  # deskui settings (see app/config.go). This ends up world-readable in the
+  # Nix store, so secrets are only referenced as $VARS here; their values go
+  # in /var/lib/deskui/secrets.env on the device (mode 600), e.g.
+  #   DESKUI_HA_TOKEN=eyJ...            (HA profile > Security > Long-lived tokens)
+  #   DESKUI_ICAL_PERSONAL=https://calendar.google.com/calendar/ical/.../basic.ics
+  # A missing secret just disables that source.
+  deskuiConfig = pkgs.writeText "deskui.json" (builtins.toJSON {
+    home_assistant = {
+      url = "http://homeassistant.local:8123";
+      token = "$DESKUI_HA_TOKEN";
+      # Home screen toggles; empty shows local demo toggles.
+      buttons = [
+        # { label = "Lamp"; entity = "light.desk_lamp"; }
+      ];
+      # Fire from an automation to pop up a message:
+      #   event: deskie_notify, data: { title: "...", message: "..." }
+      notify_event = "deskie_notify";
+    };
+    calendar = {
+      feeds = [
+        { name = "Personal"; url = "$DESKUI_ICAL_PERSONAL"; }
+      ];
+      days = 7;
+      refresh_minutes = 10;
+    };
+  });
+in
 {
   networking.hostName = "deskie";
   system.stateVersion = "26.04";
@@ -27,9 +55,11 @@
 
   systemd.services.deskui = {
     wantedBy = [ "multi-user.target" ];
-    after = [ "systemd-modules-load.service" ];
+    after = [ "systemd-modules-load.service" "network-online.target" ];
+    wants = [ "network-online.target" ];
     serviceConfig = {
-      ExecStart = "${pkgs.deskui}/bin/deskui";
+      ExecStart = "${pkgs.deskui}/bin/deskui -config ${deskuiConfig}";
+      EnvironmentFile = "-/var/lib/deskui/secrets.env"; # optional, see above
       User = "deskui";
       Restart = "on-failure";
       RestartSec = 2;
