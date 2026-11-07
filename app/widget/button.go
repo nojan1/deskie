@@ -58,6 +58,8 @@ func (b *Button) SetOn(v bool) {
 	}
 }
 
+func (b *Button) Label() string { return b.label }
+
 func (b *Button) SetLabel(s string) {
 	if s != b.label {
 		b.label = s

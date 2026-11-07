@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"os"
+	"strings"
 	"time"
 
 	"deskui/source/calendar"
@@ -31,11 +32,12 @@ type app struct {
 	post func(func())
 	cfg  *Config
 
-	ha        *hass.Client
-	haDot     *widget.Box
-	haButtons map[string]*widget.Button
-	haStates  map[string]hass.State
-	sensors   map[string][]*sensorTile
+	ha          *hass.Client
+	haDot       *widget.Box
+	haButtons   map[string]*widget.Button
+	haAutoLabel map[string]bool // buttons labelled with the entity's friendly_name
+	haStates    map[string]hass.State
+	sensors     map[string][]*sensorTile
 
 	weather     *weatherView
 	weatherCond string
@@ -51,10 +53,11 @@ type app struct {
 func newApp(ctx context.Context, s *widget.Screen, cfg *Config, post func(func())) *app {
 	a := &app{
 		s: s, th: s.Theme, ctx: ctx, post: post, cfg: cfg,
-		haButtons: map[string]*widget.Button{},
-		haStates:  map[string]hass.State{},
-		sensors:   map[string][]*sensorTile{},
-		night:     newNightMode(s, cfg.Night),
+		haButtons:   map[string]*widget.Button{},
+		haAutoLabel: map[string]bool{},
+		haStates:    map[string]hass.State{},
+		sensors:     map[string][]*sensorTile{},
+		night:       newNightMode(s, cfg.Night),
 	}
 	a.build()
 	return a
@@ -218,7 +221,14 @@ func (a *app) startSources() {
 
 // --- Home Assistant -------------------------------------------------------
 
+// haToggle is a home-screen toggle for any entity homeassistant.toggle handles:
+// lights, switches, fans, input_boolean helpers, ... An empty label shows the
+// entity's friendly_name once its state arrives.
 func (a *app) haToggle(label, entity string) *widget.Button {
+	if label == "" {
+		a.haAutoLabel[entity] = true
+		label = entityLabel(entity)
+	}
 	b := widget.NewToggle(a.th, label, func(b *widget.Button) {
 		// The toggle already flipped optimistically; HA's state_changed
 		// confirms it. On failure, snap back to the last known state.
@@ -239,6 +249,9 @@ func (a *app) setHAState(s hass.State) {
 	a.haStates[s.EntityID] = s
 	if b := a.haButtons[s.EntityID]; b != nil {
 		b.SetOn(s.State == "on")
+		if a.haAutoLabel[s.EntityID] {
+			b.SetLabel(s.Name())
+		}
 	}
 	for _, t := range a.sensors[s.EntityID] {
 		t.setState(s)
@@ -396,4 +409,14 @@ func dayHeading(t, now time.Time) string {
 	default:
 		return t.Format("Monday 2 Jan")
 	}
+}
+
+// entityLabel is a placeholder label from an entity id, shown until the
+// entity's friendly_name is known: "input_boolean.guest_mode" -> "Guest mode".
+func entityLabel(entity string) string {
+	_, name, _ := strings.Cut(entity, ".")
+	if name == "" {
+		name = entity
+	}
+	return formatState(name, "")
 }

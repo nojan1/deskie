@@ -10,7 +10,8 @@ let
     home_assistant = {
       url = "http://192.168.1.15:8123";
       token = "$DESKUI_HA_TOKEN";
-      # Home screen toggles; empty shows local demo toggles.
+      # Home screen toggles: lights, switches, input_boolean helpers, ...
+      # An empty label uses the entity's name. Empty list: local demo toggles.
       buttons = [
         # { label = "Lamp"; entity = "light.desk_lamp"; }
       ];

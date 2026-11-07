@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -147,5 +148,29 @@ func TestNightViewTapWakes(t *testing.T) {
 	s.Handle(widget.Event{Kind: widget.Up, Pos: s.Bounds().Min})
 	if n.active() {
 		t.Fatal("tap did not wake")
+	}
+}
+
+func TestBooleanHelperButton(t *testing.T) {
+	cfg := &Config{HomeAssistant: &HAConfig{URL: "http://x", Buttons: []HAEntity{
+		{"", "input_boolean.guest_mode"},
+		{"Coffee", "input_boolean.coffee"},
+	}}}
+	s := widget.NewScreen(480, 320, newTheme())
+	a := newApp(context.Background(), s, cfg, func(fn func()) { fn() })
+
+	guest := a.haButtons["input_boolean.guest_mode"]
+	if guest == nil || guest.Label() != "Guest mode" {
+		t.Fatalf("placeholder label: %v", guest)
+	}
+	a.setHAState(hass.State{EntityID: "input_boolean.guest_mode", State: "on",
+		Attributes: map[string]any{"friendly_name": "Guests"}})
+	if !guest.On() || guest.Label() != "Guests" {
+		t.Fatalf("helper button: on=%v label=%q", guest.On(), guest.Label())
+	}
+	a.setHAState(hass.State{EntityID: "input_boolean.coffee", State: "off",
+		Attributes: map[string]any{"friendly_name": "Coffee machine"}})
+	if b := a.haButtons["input_boolean.coffee"]; b.On() || b.Label() != "Coffee" {
+		t.Fatalf("configured label replaced: %q", b.Label())
 	}
 }

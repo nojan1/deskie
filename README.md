@@ -112,6 +112,10 @@ generates this file into the Nix store from the `deskuiConfig` attrset. It
 covers the Home Assistant URL, the button and sensor entities, the weather
 entity, the notify event, the calendar feeds and the night mode hours.
 
+Home-screen buttons are toggles for anything Home Assistant's generic
+`homeassistant.toggle` handles: lights, switches, fans and boolean helpers
+(`input_boolean.*`). A button without a label shows the entity's name.
+
 The Nix store is world-readable, so secrets are never put in it: the config
 only references them as `$VARS`, and their values come from files on the
 device that are not in this repo:
