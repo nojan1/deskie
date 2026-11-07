@@ -346,3 +346,26 @@ func (c *Client) CallService(ctx context.Context, domain, service, entityID stri
 	_, err := c.call(ctx, req, nil)
 	return err
 }
+
+// CallServiceResponse calls a service that returns data (e.g.
+// weather.get_forecasts) and returns its response object.
+func (c *Client) CallServiceResponse(ctx context.Context, domain, service, entityID string, data map[string]any) (json.RawMessage, error) {
+	req := map[string]any{"type": "call_service", "domain": domain, "service": service, "return_response": true}
+	if entityID != "" {
+		req["target"] = map[string]any{"entity_id": entityID}
+	}
+	if data != nil {
+		req["service_data"] = data
+	}
+	res, err := c.call(ctx, req, nil)
+	if err != nil {
+		return nil, err
+	}
+	var r struct {
+		Response json.RawMessage `json:"response"`
+	}
+	if err := json.Unmarshal(res, &r); err != nil {
+		return nil, err
+	}
+	return r.Response, nil
+}

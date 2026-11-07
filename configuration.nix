@@ -17,6 +17,23 @@ let
       # Fire from an automation to pop up a message:
       #   event: deskie_notify, data: { title: "...", message: "..." }
       notify_event = "deskie_notify";
+      # Shown next to the clock. weather.forecast_home is the default name
+      # of the Met.no integration's entity.
+      weather = "weather.forecast_home";
+      # Read-only tiles above the buttons (state + unit); label defaults to
+      # the entity's friendly name. Empty hides the row.
+      sensors = [
+        # { label = "Indoor"; entity = "sensor.living_room_temperature"; }
+      ];
+    };
+    # Black screen with a dim clock during these hours and while nobody is
+    # home (zone.home counts the people in it). A tap wakes the screen for
+    # wake_seconds; the Night button enters night mode by hand.
+    night = {
+      start = "23:00";
+      end = "07:00";
+      away_entity = "zone.home";
+      wake_seconds = 60;
     };
     calendar = {
       feeds = [

@@ -16,16 +16,26 @@ import (
 type Config struct {
 	HomeAssistant *HAConfig       `json:"home_assistant"`
 	Calendar      *CalendarConfig `json:"calendar"`
+	Night         *NightConfig    `json:"night"`
+}
+
+// HAEntity is a Home Assistant entity with a display label (empty label:
+// the entity's friendly_name).
+type HAEntity struct {
+	Label  string `json:"label"`
+	Entity string `json:"entity"`
 }
 
 type HAConfig struct {
 	URL   string `json:"url"`   // e.g. http://homeassistant.local:8123
 	Token string `json:"token"` // long-lived access token, usually "$DESKUI_HA_TOKEN"
 	// Buttons become toggles on the home screen mirroring these entities.
-	Buttons []struct {
-		Label  string `json:"label"`
-		Entity string `json:"entity"`
-	} `json:"buttons"`
+	Buttons []HAEntity `json:"buttons"`
+	// Weather is a weather.* entity shown next to the clock: current
+	// condition and temperature, and today's high/low from its forecast.
+	Weather string `json:"weather"`
+	// Sensors are shown as read-only tiles (state + unit) on the home screen.
+	Sensors []HAEntity `json:"sensors"`
 	// NotifyEvent is a bus event type that pops up a message on the display,
 	// with event data {"title": "...", "message": "..."}. Default
 	// "deskie_notify"; fire it from an automation.
@@ -36,6 +46,31 @@ type CalendarConfig struct {
 	Feeds          []calendar.Feed `json:"feeds"`
 	Days           int             `json:"days"`            // default 7
 	RefreshMinutes int             `json:"refresh_minutes"` // default 10
+}
+
+// NightConfig blanks the screen to a dim clock. Night mode is on during the
+// Start-End window (local "HH:MM", may wrap past midnight; both empty for
+// none) and while AwayEntity reports nobody home. A tap wakes the screen for
+// WakeSeconds; the Night button on the home screen enters it by hand.
+type NightConfig struct {
+	Start string `json:"start"`
+	End   string `json:"end"`
+	// AwayEntity counts as away when its state is "0" (a zone's person
+	// count, e.g. zone.home), "not_home", "away" or "off". Needs Home
+	// Assistant.
+	AwayEntity  string `json:"away_entity"`
+	WakeSeconds int    `json:"wake_seconds"` // default 60
+
+	startMin, endMin int // parsed Start/End, minutes after midnight; -1 if unset
+}
+
+// parseClock parses "HH:MM" into minutes after midnight.
+func parseClock(s string) (int, error) {
+	var h, m int
+	if n, err := fmt.Sscanf(s, "%d:%d", &h, &m); err != nil || n != 2 || h < 0 || h > 23 || m < 0 || m > 59 {
+		return 0, fmt.Errorf("%q is not a HH:MM time", s)
+	}
+	return h*60 + m, nil
 }
 
 func loadConfig(path string) (*Config, error) {
@@ -68,6 +103,23 @@ func loadConfig(path string) (*Config, error) {
 		if ha.Token, err = expandSecret(ha.Token); err != nil {
 			warn("home_assistant.token: %v", err)
 			cfg.HomeAssistant = nil
+		}
+	}
+	if n := cfg.Night; n != nil {
+		n.startMin, n.endMin = -1, -1
+		if (n.Start == "") != (n.End == "") {
+			return nil, fmt.Errorf("night: set both start and end, or neither")
+		}
+		if n.Start != "" {
+			if n.startMin, err = parseClock(n.Start); err != nil {
+				return nil, fmt.Errorf("night.start: %w", err)
+			}
+			if n.endMin, err = parseClock(n.End); err != nil {
+				return nil, fmt.Errorf("night.end: %w", err)
+			}
+		}
+		if n.WakeSeconds <= 0 {
+			n.WakeSeconds = 60
 		}
 	}
 	if c := cfg.Calendar; c != nil {

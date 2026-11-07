@@ -20,6 +20,8 @@ type Theme struct {
 	ButtonDown color.Color
 	Backdrop   color.Color // drawn over everything below a dimming layer
 	Touch      color.Color // debug touch marker
+	Night      color.Color // night mode background
+	NightText  color.Color // night mode clock
 
 	Large, Medium, Small font.Face
 	Radius               float64
@@ -39,9 +41,12 @@ func DefaultTheme(large, medium, small font.Face) *Theme {
 		ButtonDown: color.RGBA{0x81, 0xa1, 0xc1, 0xff},  // nord9
 		Backdrop:   color.NRGBA{0x2e, 0x34, 0x40, 0xb0}, // nord0, translucent
 		Touch:      color.RGBA{0xbf, 0x61, 0x6a, 0xff},  // nord11
-		Large:      large,
-		Medium:     medium,
-		Small:      small,
-		Radius:     14,
+		// The panel's backlight can't be dimmed, so night mode is black.
+		Night:     color.RGBA{0x00, 0x00, 0x00, 0xff},
+		NightText: color.RGBA{0x4c, 0x56, 0x6a, 0xff}, // nord3
+		Large:     large,
+		Medium:    medium,
+		Small:     small,
+		Radius:    14,
 	}
 }

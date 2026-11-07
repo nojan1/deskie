@@ -24,15 +24,9 @@ func TestSnapshot(t *testing.T) {
 		HomeAssistant: &HAConfig{URL: "http://x", NotifyEvent: "deskie_notify"},
 		Calendar:      &CalendarConfig{},
 	}
-	cfg.HomeAssistant.Buttons = append(cfg.HomeAssistant.Buttons,
-		struct {
-			Label  string `json:"label"`
-			Entity string `json:"entity"`
-		}{"Lamp", "light.desk"},
-		struct {
-			Label  string `json:"label"`
-			Entity string `json:"entity"`
-		}{"Fan", "fan.desk"})
+	cfg.HomeAssistant.Buttons = []HAEntity{{"Lamp", "light.desk"}, {"Fan", "fan.desk"}}
+	cfg.HomeAssistant.Weather = "weather.home"
+	cfg.HomeAssistant.Sensors = []HAEntity{{"Indoor", "sensor.indoor"}, {"", "sensor.humidity"}, {"Washer", "sensor.washer"}}
 
 	s := widget.NewScreen(480, 320, newTheme())
 	a := newApp(context.Background(), s, cfg, func(fn func()) { fn() })
@@ -55,6 +49,11 @@ func TestSnapshot(t *testing.T) {
 	}
 	a.setHAConnected(true)
 	a.setHAState(hass.State{EntityID: "light.desk", State: "on"})
+	a.setHAState(hass.State{EntityID: "weather.home", State: "partlycloudy", Attributes: map[string]any{"temperature": 12.4}})
+	a.setForecast(14, -3, true)
+	a.setHAState(hass.State{EntityID: "sensor.indoor", State: "21.53", Attributes: map[string]any{"unit_of_measurement": "°C"}})
+	a.setHAState(hass.State{EntityID: "sensor.humidity", State: "41", Attributes: map[string]any{"unit_of_measurement": "%", "friendly_name": "Humidity"}})
+	a.setHAState(hass.State{EntityID: "sensor.washer", State: "running"})
 	a.setEvents([]calendar.Event{
 		{Title: "Birthday: Alex", Start: today, End: today.AddDate(0, 0, 1), AllDay: true},
 		{Title: "Standup", Start: now.Add(20 * time.Minute), End: now.Add(35 * time.Minute)},
@@ -71,4 +70,14 @@ func TestSnapshot(t *testing.T) {
 
 	a.notify("Washing machine", "The laundry is done. Remember to hang it up before it gets wrinkly!")
 	save("notify.png")
+	s.Top().Close()
+
+	a.night.Enter(now)
+	save("night.png")
+	a.night.wake(now)
+
+	for _, c := range []string{"sunny", "clear-night", "partlycloudy", "cloudy", "fog", "windy", "rainy", "pouring", "snowy", "snowy-rainy", "lightning", "lightning-rainy"} {
+		a.setHAState(hass.State{EntityID: "weather.home", State: c, Attributes: map[string]any{"temperature": 3.0}})
+		save("weather-" + c + ".png")
+	}
 }

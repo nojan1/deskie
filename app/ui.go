@@ -35,6 +35,13 @@ type app struct {
 	haDot     *widget.Box
 	haButtons map[string]*widget.Button
 	haStates  map[string]hass.State
+	sensors   map[string][]*sensorTile
+
+	weather     *weatherView
+	weatherCond string
+	hiLo        string
+
+	night *nightMode
 
 	events    []calendar.Event
 	calLoaded bool
@@ -46,6 +53,8 @@ func newApp(ctx context.Context, s *widget.Screen, cfg *Config, post func(func()
 		s: s, th: s.Theme, ctx: ctx, post: post, cfg: cfg,
 		haButtons: map[string]*widget.Button{},
 		haStates:  map[string]hass.State{},
+		sensors:   map[string][]*sensorTile{},
+		night:     newNightMode(s, cfg.Night),
 	}
 	a.build()
 	return a
@@ -84,10 +93,35 @@ func (a *app) build() {
 
 	a.next = &nextEvent{Label: *widget.NewLabel("", th.Small, th.TextDim), a: a}
 
+	ha := a.cfg.HomeAssistant
+
+	clockRow := widget.NewHStack()
+	clockRow.Add(widget.NewClock("15:04:05", th.Large, th.Text), widget.Flex(1))
+	if ha != nil && ha.Weather != "" {
+		a.weather = newWeatherView(th)
+		clockRow.Padding = widget.Insets{Left: 4, Right: 12}
+		clockRow.Add(a.weather, widget.Fixed(140))
+	}
+
+	var sensors *widget.Stack
+	if ha != nil && len(ha.Sensors) > 0 {
+		sensors = widget.NewHStack()
+		sensors.Spacing = 12
+		sensors.Padding = widget.Insets{Top: 4, Left: 20, Right: 20}
+		for _, e := range ha.Sensors {
+			t := newSensorTile(th, e)
+			a.sensors[e.Entity] = append(a.sensors[e.Entity], t)
+			sensors.Add(t, widget.Flex(1))
+		}
+	}
+
 	buttons := widget.NewHStack()
-	buttons.Spacing = 20
+	buttons.Spacing = 12
 	buttons.Padding = widget.Insets{Top: 10, Left: 20, Right: 20, Bottom: 20}
-	if ha := a.cfg.HomeAssistant; ha != nil && len(ha.Buttons) > 0 {
+	if sensors != nil {
+		buttons.Padding.Bottom = 14
+	}
+	if ha != nil && len(ha.Buttons) > 0 {
 		for _, b := range ha.Buttons {
 			buttons.Add(a.haToggle(b.Label, b.Entity), widget.Flex(1))
 		}
@@ -97,14 +131,23 @@ func (a *app) build() {
 			Add(widget.NewToggle(th, "Lamp", nil), widget.Flex(1)).
 			Add(widget.NewToggle(th, "Fan", nil), widget.Flex(1))
 	}
-	buttons.Add(widget.NewButton(th, "Agenda", func(*widget.Button) { a.openAgenda() }), widget.Flex(1))
+	buttons.
+		Add(widget.NewButton(th, "Agenda", func(*widget.Button) { a.openAgenda() }), widget.Flex(1)).
+		Add(widget.NewButton(th, "Night", func(*widget.Button) { a.night.Enter(time.Now()) }), widget.Flex(1))
 
 	root := widget.NewVStack()
-	root.
-		Add(header, widget.Fixed(40)).
-		Add(widget.NewClock("15:04:05", th.Large, th.Text), widget.Fixed(110)).
-		Add(a.next, widget.Fixed(30)).
-		Add(buttons, widget.Flex(1))
+	root.Add(header, widget.Fixed(40))
+	if sensors != nil {
+		root.
+			Add(clockRow, widget.Fixed(96)).
+			Add(a.next, widget.Fixed(26)).
+			Add(sensors, widget.Fixed(64))
+	} else {
+		root.
+			Add(clockRow, widget.Fixed(110)).
+			Add(a.next, widget.Fixed(30))
+	}
+	root.Add(buttons, widget.Flex(1))
 
 	a.s.SetRoot(root)
 }
@@ -116,6 +159,17 @@ func (a *app) startSources() {
 		for _, b := range ha.Buttons {
 			entities = append(entities, b.Entity)
 		}
+		for _, s := range ha.Sensors {
+			entities = append(entities, s.Entity)
+		}
+		if ha.Weather != "" {
+			entities = append(entities, ha.Weather)
+		}
+		if n := a.cfg.Night; n != nil && n.AwayEntity != "" {
+			entities = append(entities, n.AwayEntity)
+		}
+		// Each (re)connect refreshes the forecast.
+		connected := make(chan struct{}, 1)
 		a.ha = &hass.Client{
 			URL: ha.URL, Token: ha.Token,
 			Entities: entities,
@@ -133,10 +187,19 @@ func (a *app) startSources() {
 				if err != nil {
 					fmt.Fprintln(os.Stderr, "home assistant:", err)
 				}
+				if up {
+					select {
+					case connected <- struct{}{}:
+					default:
+					}
+				}
 				a.post(func() { a.setHAConnected(up) })
 			},
 		}
 		go a.ha.Run(a.ctx)
+		if ha.Weather != "" {
+			go a.pollForecast(ha.Weather, connected)
+		}
 	}
 	if c := a.cfg.Calendar; c != nil && len(c.Feeds) > 0 {
 		p := &calendar.Poller{
@@ -177,7 +240,22 @@ func (a *app) setHAState(s hass.State) {
 	if b := a.haButtons[s.EntityID]; b != nil {
 		b.SetOn(s.State == "on")
 	}
+	for _, t := range a.sensors[s.EntityID] {
+		t.setState(s)
+	}
+	if ha := a.cfg.HomeAssistant; ha != nil && s.EntityID == ha.Weather {
+		a.setWeatherState(s)
+	}
+	if n := a.cfg.Night; n != nil && s.EntityID == n.AwayEntity {
+		a.night.setAwayState(s)
+	}
 }
+
+// Tick runs every frame, before the screen's own tick.
+func (a *app) Tick(now time.Time) { a.night.Tick(now) }
+
+// Touched is called for every touch event, before the screen handles it.
+func (a *app) Touched(now time.Time) { a.night.Touched(now) }
 
 func (a *app) setHAConnected(up bool) {
 	if a.haDot == nil {

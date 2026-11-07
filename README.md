@@ -1,8 +1,8 @@
 # deskie
 
 A small always-on desk display: a Raspberry Pi 3 with a 480×320 resistive
-touchscreen showing the time, upcoming calendar events and Home Assistant
-controls and notifications.
+touchscreen showing the time, weather, upcoming calendar events, Home
+Assistant sensors, controls and notifications, with a night mode.
 
 The whole device is described declaratively with a Nix flake: the OS
 (NixOS), the display/touch drivers and the UI app, `deskui`, written in Go
@@ -29,6 +29,9 @@ overlays/            waveshare35a.dtbo (vendor binary, not in RPi firmware)
 app/                 deskui, the Go UI
   main.go            Flags, startup, the event/render loop
   ui.go              The screens: home, agenda, notifications
+  weather.go         Weather next to the clock: drawn icons, today's high/low
+  sensors.go         Read-only Home Assistant sensor tiles
+  night.go           Night mode: when to show it, the night view
   config.go          JSON config loading, $VAR secret expansion
   display*.go        Display backends (framebuffer, kitty) and the Display interface
   touch_evdev.go     ADS7846 input via evdev, affine raw->pixel calibration
@@ -91,8 +94,10 @@ A small retained-mode toolkit:
 ### Data sources (`app/source`)
 
 - **Home Assistant** (`hass`): WebSocket API client. Mirrors the state of
-  the entities behind the home-screen buttons, toggles them with service
-  calls, and subscribes to a custom bus event for notifications.
+  the entities behind the home-screen buttons, sensor tiles, weather and
+  night mode's away entity, toggles buttons with service calls, fetches
+  forecasts (`weather.get_forecasts`, a service with a response), and
+  subscribes to a custom bus event for notifications.
   Reconnects with backoff.
 - **Calendar** (`calendar`): polls iCalendar feeds such as Google Calendar's
   *secret address in iCal format*, which needs no OAuth on a headless device.
@@ -104,8 +109,8 @@ A small retained-mode toolkit:
 
 `deskui -config file.json` reads the settings. `configuration.nix`
 generates this file into the Nix store from the `deskuiConfig` attrset. It
-covers the Home Assistant URL, the button entities, the notify event and
-the calendar feeds.
+covers the Home Assistant URL, the button and sensor entities, the weather
+entity, the notify event, the calendar feeds and the night mode hours.
 
 The Nix store is world-readable, so secrets are never put in it: the config
 only references them as `$VARS`, and their values come from files on the
@@ -131,6 +136,20 @@ script to pop up a message on the display:
     title: Washing machine
     message: The laundry is done.
 ```
+
+### Night mode
+
+The panel's backlight is wired always-on (there is no `/sys/class/backlight`
+device), so night mode can't dim it: it shows a black screen with a dim
+clock instead. It turns on
+
+- during the `night.start`-`night.end` hours (may wrap past midnight),
+- while `night.away_entity` says nobody is home (state `0`, `not_home`,
+  `away` or `off`; e.g. `zone.home`, which counts the people in it),
+- or by hand with the **Night** button.
+
+A tap wakes the screen. Manual night mode then stays off; automatic night
+mode comes back after `wake_seconds` without a touch.
 
 ## Development
 

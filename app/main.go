@@ -97,10 +97,12 @@ func main() {
 			if e.Kind == Quit {
 				return
 			}
+			a.Touched(time.Now())
 			screen.Handle(toWidgetEvent(e))
 		case fn := <-updates:
 			fn()
 		case now := <-tick.C:
+			a.Tick(now)
 			screen.Tick(now)
 			if r, ok := screen.Render(img); ok {
 				if err := d.Flush(img, r); err != nil {
