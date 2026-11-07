@@ -85,12 +85,7 @@ func drawWeatherIcon(c *widget.Canvas, cond string, r image.Rectangle, bg color.
 	}
 	moon := func() {
 		x, y := P(0.5, 0.5)
-		c.SetColor(iconSun)
-		c.DrawCircle(x, y, L(0.32))
-		c.Fill()
-		c.SetColor(bg)
-		c.DrawCircle(x+L(0.17), y-L(0.12), L(0.27))
-		c.Fill()
+		drawMoon(c, x, y, L(0.32), iconSun, bg)
 	}
 	// cloud draws a cloud whose bottom edge sits at y (0..1).
 	cloud := func(col color.Color, dx, y float64) {
@@ -186,6 +181,16 @@ func drawWeatherIcon(c *widget.Canvas, cond string, r image.Rectangle, bg color.
 	default: // "exceptional", unknown
 		cloud(iconDark, 0, 0.72)
 	}
+}
+
+// drawMoon draws a crescent of radius r centered at (x, y), cut out with bg.
+func drawMoon(c *widget.Canvas, x, y, r float64, fg, bg color.Color) {
+	c.SetColor(fg)
+	c.DrawCircle(x, y, r)
+	c.Fill()
+	c.SetColor(bg)
+	c.DrawCircle(x+r*0.53, y-r*0.375, r*0.84)
+	c.Fill()
 }
 
 var conditionNames = map[string]string{

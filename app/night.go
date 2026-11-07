@@ -11,7 +11,7 @@ import (
 // with a dim clock on top of everything else. The panel's backlight is
 // always on, so black is as dark as it gets.
 //
-// It is on when entered by hand (Night button), or automatically during the
+// It is on when entered by hand (moon button), or automatically during the
 // configured hours or while nobody is home. A tap leaves manual night mode
 // for good, and automatic night mode for cfg.WakeSeconds; touching the
 // screen while awake keeps it awake.
@@ -67,7 +67,7 @@ func (n *nightMode) Tick(now time.Time) {
 	}
 }
 
-// Enter is the Night button.
+// Enter is the moon button.
 func (n *nightMode) Enter(now time.Time) {
 	n.manual = true
 	n.Tick(now)
@@ -121,6 +121,58 @@ func (v *nightView) HandleEvent(e widget.Event) bool {
 		v.onWake()
 	}
 	return true
+}
+
+// moonButton is the small night-mode button in the header: a crescent that
+// gets a rounded highlight while pressed. The whole widget is the touch
+// target, a bit larger than the icon.
+type moonButton struct {
+	widget.Base
+	th      *widget.Theme
+	down    bool
+	onClick func()
+}
+
+func newMoonButton(th *widget.Theme, onClick func()) *moonButton {
+	return &moonButton{th: th, onClick: onClick}
+}
+
+func (b *moonButton) setDown(v bool) {
+	if v != b.down {
+		b.down = v
+		b.Invalidate()
+	}
+}
+
+func (b *moonButton) HandleEvent(e widget.Event) bool {
+	switch e.Kind {
+	case widget.Down:
+		b.setDown(true)
+	case widget.Move:
+		b.setDown(e.Pos.In(b.Bounds()))
+	case widget.Up:
+		tapped := b.down
+		b.setDown(false)
+		if tapped && b.onClick != nil {
+			b.onClick()
+		}
+	case widget.Cancel:
+		b.setDown(false)
+	}
+	return true
+}
+
+func (b *moonButton) Draw(c *widget.Canvas) {
+	r := b.Bounds()
+	bg := b.th.Header
+	if b.down {
+		bg = b.th.ButtonDown
+		c.FillRoundRect(widget.Pad(3).Shrink(r), 8, bg)
+	}
+	c.WithClip(r, func() {
+		cx, cy := float64(r.Min.X+r.Max.X)/2, float64(r.Min.Y+r.Max.Y)/2
+		drawMoon(c, cx, cy, 9, b.th.Text, bg)
+	})
 }
 
 // Opaque, so the screen skips painting the layers underneath.

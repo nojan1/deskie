@@ -146,7 +146,7 @@ clock instead. It turns on
 - during the `night.start`-`night.end` hours (may wrap past midnight),
 - while `night.away_entity` says nobody is home (state `0`, `not_home`,
   `away` or `off`; e.g. `zone.home`, which counts the people in it),
-- or by hand with the **Night** button.
+- or by hand with the moon button in the header.
 
 A tap wakes the screen. Manual night mode then stays off; automatic night
 mode comes back after `wake_seconds` without a touch.

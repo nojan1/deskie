@@ -28,7 +28,7 @@ let
     };
     # Black screen with a dim clock during these hours and while nobody is
     # home (zone.home counts the people in it). A tap wakes the screen for
-    # wake_seconds; the Night button enters night mode by hand.
+    # wake_seconds; the moon button in the header enters it by hand.
     night = {
       start = "23:00";
       end = "07:00";

@@ -83,7 +83,9 @@ func (a *app) build() {
 	}
 	headerRow.
 		Add(title, widget.Flex(1)).
-		Add(date, widget.Auto)
+		Add(date, widget.Auto).
+		Add(newMoonButton(th, func() { a.night.Enter(time.Now()) }), widget.Fixed(38))
+	headerRow.Padding.Right = 4 // the moon button's own margin is enough
 
 	header := widget.NewVStack()
 	header.Background = th.Header
@@ -116,7 +118,7 @@ func (a *app) build() {
 	}
 
 	buttons := widget.NewHStack()
-	buttons.Spacing = 12
+	buttons.Spacing = 20
 	buttons.Padding = widget.Insets{Top: 10, Left: 20, Right: 20, Bottom: 20}
 	if sensors != nil {
 		buttons.Padding.Bottom = 14
@@ -131,9 +133,7 @@ func (a *app) build() {
 			Add(widget.NewToggle(th, "Lamp", nil), widget.Flex(1)).
 			Add(widget.NewToggle(th, "Fan", nil), widget.Flex(1))
 	}
-	buttons.
-		Add(widget.NewButton(th, "Agenda", func(*widget.Button) { a.openAgenda() }), widget.Flex(1)).
-		Add(widget.NewButton(th, "Night", func(*widget.Button) { a.night.Enter(time.Now()) }), widget.Flex(1))
+	buttons.Add(widget.NewButton(th, "Agenda", func(*widget.Button) { a.openAgenda() }), widget.Flex(1))
 
 	root := widget.NewVStack()
 	root.Add(header, widget.Fixed(40))

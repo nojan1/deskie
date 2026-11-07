@@ -51,7 +51,7 @@ type CalendarConfig struct {
 // NightConfig blanks the screen to a dim clock. Night mode is on during the
 // Start-End window (local "HH:MM", may wrap past midnight; both empty for
 // none) and while AwayEntity reports nobody home. A tap wakes the screen for
-// WakeSeconds; the Night button on the home screen enters it by hand.
+// WakeSeconds; the moon button in the header enters it by hand.
 type NightConfig struct {
 	Start string `json:"start"`
 	End   string `json:"end"`
