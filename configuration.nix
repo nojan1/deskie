@@ -18,9 +18,8 @@ let
       # Fire from an automation to pop up a message:
       #   event: deskie_notify, data: { title: "...", message: "..." }
       notify_event = "deskie_notify";
-      # Shown next to the clock. weather.forecast_home is the default name
-      # of the Met.no integration's entity.
-      weather = "weather.forecast_home";
+      # Shown next to the clock (SMHI integration).
+      weather = "weather.smhi_home";
       # Read-only tiles above the buttons (state + unit); label defaults to
       # the entity's friendly name. Empty hides the row.
       sensors = [
