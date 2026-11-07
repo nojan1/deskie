@@ -13,6 +13,15 @@
     uboot.enable = true;
   };
 
+  # Keep the kernel console (fbcon) off the panel. Without HDMI the panel is the
+  # only framebuffer, so fbcon takes it and draws boot messages, the tty1 login
+  # prompt and a cursor over deskui. fbcon=map:N picks which fb the consoles go
+  # to; fb9 never exists here, so fbcon binds to no framebuffer at all, whatever
+  # number the panel gets. Console access stays on SSH and the serial port
+  # (console=ttyS0 from the SD image profile). Side effect: no text console on
+  # HDMI either; drop this line to get it back for debugging.
+  boot.kernelParams = [ "fbcon=map:9" ];
+
   # The pinned Raspberry Pi kernel doesn't build ZFS; the base image profile would try.
   boot.supportedFilesystems.zfs = lib.mkForce false;
 
